@@ -1,6 +1,5 @@
 const mongoose = require('mongoose'),
     express = require('express'),
-    app = express(),
     bodyParser = require('body-parser'),
     multer = require('multer'),
     multerS3 = require('multer-s3'),
@@ -9,6 +8,7 @@ const mongoose = require('mongoose'),
     bcrypt = require('bcrypt'),
     jwt = require('jsonwebtoken');
 
+const app = express();
 app.listen(3000);
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -158,21 +158,11 @@ app.put('/secure/memory/:memoryId', upload.array('photo', 4), function (req, res
             return res.status(500).send(err);
         else if (memory == null)
             return res.status(410).json({ Error: 'Memory does not exist.' });
-        else
-            return res.status(200).send({});
-    });
-});
-
-app.delete('/secure/memory/:memoryId', function (req, res, next) {
-    memoryModel.findOneAndDelete({ _id: req.params.memoryId, username: req.decoded.username }, function (err, memory) {
-        if (err)
-            return res.status(500).send(err);
-        else if (memory == null)
-            return res.status(410).json({ Error: 'Memory does not exist.' });
         else if (memory.photos.length != 0) {
-            let photos = [];
-            memory.photos.forEach(function (fileName) {
-                photos.push({ Key: fileName });
+            let photos = memory.photos.map(filename => {
+                return {
+                    Key: filename
+                };
             });
             let params = {
                 Bucket: 'memories-api', Delete: { Objects: photos }
@@ -183,9 +173,33 @@ app.delete('/secure/memory/:memoryId', function (req, res, next) {
                 else
                     return res.status(200).json({});
             });
-        } else {
+        } else 
             return res.status(200).json({});
-        }
     });
 });
 
+app.delete('/secure/memory/:memoryId', function (req, res, next) {
+    memoryModel.findOneAndDelete({ _id: req.params.memoryId, username: req.decoded.username }, function (err, memory) {
+        if (err)
+            return res.status(500).send(err);
+        else if (memory == null)
+            return res.status(410).json({ Error: 'Memory does not exist.' });
+        else if (memory.photos.length != 0) {
+            let photos = memory.photos.map(filename => {
+                return {
+                    Key: filename
+                };
+            });
+            let params = {
+                Bucket: 'memories-api', Delete: { Objects: photos }
+            };
+            s3.deleteObjects(params, function (err, data) {
+                if (err)
+                    return res.status(500).send(err);
+                else
+                    return res.status(200).json({});
+            });
+        } else
+            return res.status(200).json({});
+    });
+});
