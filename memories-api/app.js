@@ -19,13 +19,19 @@ mongoose.set('useFindAndModify', false);
 const saltRounds = 10;
 
 const memorySchema = {
-    username: String,
+    _id: {
+        type: mongoose.Schema.Types.ObjectId, auto: true
+    },
+    userId: mongoose.Schema.Types.ObjectId,
     title: String,
     info: String,
     photos: [String],
     creationTimestamp: Date
 };
 const userSchema = {
+    _id: {
+        type: mongoose.Schema.Types.ObjectId, auto: true
+    },
     username: {
         type: String, unique: true
     },
@@ -70,9 +76,10 @@ ProtectedRoutes.use((req, res, next) => {
 });
 
 app.post('/register', function (req, res, next) {
-    if (req.body.username == null || !req.body.username.trim())
-        return res.status(400).send({ Error: 'Missing username.' });
-    if (req.body.password == null || !req.body.password.trim())
+    let regex = /^[a-zA-Z0-9_.-]*$/; 
+    if (req.body.username == null || !req.body.username.trim() || !regex.exec(req.body.username))
+        return res.status(400).send({ Error: 'Missing/Invalid username.' });
+    if (req.body.password == null)
         return res.status(400).send({ Error: 'Missing password.' });
 
     bcrypt.hash(req.body.password, saltRounds, function (err, hash) {
@@ -106,11 +113,11 @@ app.post('/login', function (req, res, next) {
                     return res.status(401).json({ Error: 'Invalid password/username.' });
                 else {
                     const payload = {
-                        username: req.body.username
+                        userId: user._id
                     };
 
                     var token = jwt.sign(payload, process.env.SECRET, {
-                        //expiresIn: 1440 // expires in 24 hours
+                        //expiresIn: 10000
                     });
 
                     return res.status(200).json({ Token: token });
@@ -122,7 +129,7 @@ app.post('/login', function (req, res, next) {
 
 app.post('/secure/memory', upload.array('photo', 4), function (req, res, next) {
     let memory = new memoryModel({
-        username: req.decoded.username,
+        userId: req.decoded.userId,
         title: req.body.title,
         info: req.body.info,
         photos: req.files.map(({ key }) => key),
@@ -138,7 +145,7 @@ app.post('/secure/memory', upload.array('photo', 4), function (req, res, next) {
 });
 
 app.get("/secure/memory", function (req, res, next) {
-    memoryModel.find({ username: req.decoded.username }, null, { skip: parseInt(req.query.offset), sort: { creationTimestamp: -1 }, limit: 5 }, function (err, memories) {
+    memoryModel.find({ userId: req.decoded.userId }, null, { skip: parseInt(req.query.offset), sort: { creationTimestamp: -1 }, limit: 5 }, function (err, memories) {
         if (err)
             return res.status(500).send(err);
         else
@@ -147,7 +154,7 @@ app.get("/secure/memory", function (req, res, next) {
 });
 
 app.put('/secure/memory/:memoryId', upload.array('photo', 4), function (req, res, next) {
-    memoryModel.findOneAndUpdate({ _id: req.params.memoryId, username: req.decoded.username}, {
+    memoryModel.findOneAndUpdate({ _id: req.params.memoryId, userId: req.decoded.userId}, {
         $set: {
             title: req.body.title,
             info: req.body.info,
@@ -179,7 +186,7 @@ app.put('/secure/memory/:memoryId', upload.array('photo', 4), function (req, res
 });
 
 app.delete('/secure/memory/:memoryId', function (req, res, next) {
-    memoryModel.findOneAndDelete({ _id: req.params.memoryId, username: req.decoded.username }, function (err, memory) {
+    memoryModel.findOneAndDelete({ _id: req.params.memoryId, userId: req.decoded.userId }, function (err, memory) {
         if (err)
             return res.status(500).send(err);
         else if (memory == null)
