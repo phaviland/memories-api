@@ -6,14 +6,15 @@ const mongoose = require('mongoose'),
     aws = require('aws-sdk'),
     mime = require('mime'),
     bcrypt = require('bcrypt'),
-    jwt = require('jsonwebtoken');
+    jwt = require('jsonwebtoken'),
+    config = require('config');
 
 const app = express();
-app.listen(3000);
+app.listen(config.get('serverConfig.port'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-mongoose.connect(process.env.CONNECTION_STRING, { useNewUrlParser: true, dbName: 'app' });
+mongoose.connect(process.env.CONNECTION_STRING, { useNewUrlParser: true, dbName: config.get('dbConfig.dbName') });
 mongoose.set('useFindAndModify', false);
 
 const saltRounds = 10;

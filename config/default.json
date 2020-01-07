@@ -1,0 +1,8 @@
+{
+    "serverConfig": {
+        "port": 3000
+    },
+    "dbConfig": {
+        "dbName": "app"
+    }
+}
