@@ -7,12 +7,14 @@ const mongoose = require('mongoose'),
     mime = require('mime'),
     bcrypt = require('bcrypt'),
     jwt = require('jsonwebtoken'),
-    config = require('config');
+    config = require('config'),
+    cors = require('cors');
 
 const app = express();
 app.listen(config.get('serverConfig.port'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
 
 mongoose.connect(process.env.CONNECTION_STRING, { useNewUrlParser: true, dbName: config.get('dbConfig.dbName') });
 mongoose.set('useFindAndModify', false);
